@@ -9,6 +9,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
+from sklearn.model_selection import LeaveOneOut
+from sklearn import metrics
+from random import shuffle
+from tqdm import tqdm
 
 # from MetStats.io import load_csv
 # data = load_csv('Data/example_1.csv')
@@ -20,7 +24,7 @@ class PLSDA:
         self.feature_names = data.feature_names
         self.target_names = data.target_names
         self.ncomp = ncomp
-        self.dummy = pd.get_dummies(data.target)
+        self.dummy = np.array(pd.get_dummies(data.target))
         plsda = PLSRegression(n_components=ncomp)
         self.res = plsda.fit(self.X, self.dummy)
         
@@ -52,6 +56,8 @@ class PLSDA:
         x_axis = np.array(self.feature_names)[order]
         y_axis = vips[order]
         plt.plot(x_axis, y_axis)
+        plt.xlabel('features')
+        plt.ylabel('variable importance')
         plt.figure()
     
     def scores_plot(self):
@@ -63,4 +69,43 @@ class PLSDA:
         plt.legend(loc='best', shadow=False, scatterpoints=1)
         plt.figure()
 
-        
+    def LOO_test(self):
+        loo = LeaveOneOut()
+        y_hat = np.zeros(self.dummy.shape)
+        for i, (train_index, test_index) in enumerate(loo.split(self.X)):
+            X_train, X_test = self.X[train_index], self.X[test_index]
+            y_train, y_test = self.dummy[train_index], self.dummy[test_index]
+            plsda = PLSRegression(n_components=self.ncomp).fit(X_train, y_train)
+            y_hat[i,:] = plsda.predict(X_test)
+        pred = np.array([np.argmax(r) for r in y_hat])
+        print('classification report: \n')
+        print(metrics.classification_report(self.y, pred))
+        confusion = pd.DataFrame(metrics.confusion_matrix(self.y, pred))
+        confusion.index = self.target_names
+        confusion.columns = self.target_names
+        acc = metrics.accuracy_score(self.y, pred)
+        return {'accuracy': acc, 'confusion': confusion}
+            
+    def permutation_test(self, maxiter=100):
+        corrs = []
+        accs = []
+        for j in tqdm(range(maxiter+1)):
+            if j == 0:
+                y_prem = self.y
+            else:
+                y_prem = np.random.permutation(self.y)
+            dummy = np.array(pd.get_dummies(y_prem))
+            corrs.append(metrics.accuracy_score(self.y, y_prem))
+            loo = LeaveOneOut()
+            y_hat = np.zeros(dummy.shape)
+            for i, (train_index, test_index) in enumerate(loo.split(self.X)):
+                X_train, X_test = self.X[train_index], self.X[test_index]
+                y_train, y_test = dummy[train_index], dummy[test_index]
+                plsda = PLSRegression(n_components=self.ncomp).fit(X_train, y_train)
+                y_hat[i,:] = plsda.predict(X_test)      
+            pred = np.array([np.argmax(r) for r in y_hat])
+            accs.append(metrics.accuracy_score(y_prem, pred))
+        plt.scatter(corrs, accs)
+        plt.xlabel('correlation')
+        plt.ylabel('accuracy score')
+        plt.figure()        

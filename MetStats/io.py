@@ -13,7 +13,7 @@ from sklearn.datasets.base import Bunch
 def load_csv(csv):
     content = read_csv(csv)
     feature_names = list(content.columns[2:])
-    data = content.iloc[:,2:]
+    data = np.array(content.iloc[:,2:])
     filename = csv
     target_names = list(set(content.iloc[:,1]))
     target = np.array([target_names.index(t) for t in content.iloc[:,1]])
