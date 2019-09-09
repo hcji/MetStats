@@ -1,0 +1,8 @@
+/model/
+.Rhistory
+/.spyproject
+/.ipynb_checkpoints
+/__pycache__
+/data/spectra/
+/experiment/spectra/
+/temp/

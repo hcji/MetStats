@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import LeaveOneOut
 from sklearn import metrics
 from random import shuffle
@@ -109,3 +110,29 @@ class PLSDA:
         plt.xlabel('correlation')
         plt.ylabel('accuracy score')
         plt.figure()        
+        
+        
+class RandomForest:
+    def __init__(self, data, n_estimators=500, max_depth=7):
+        self.X = data.data
+        self.y = data.target
+        self.feature_names = data.feature_names
+        self.target_names = data.target_names
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
+        self.res = self.clf.fit(self.X, self.y)
+            
+    def get_OOB_error(self):
+        oob_error = []
+        for i in range(1, self.n_estimators + 1):
+            clf = self.clf
+            clf.set_params(n_estimators=i)
+            clf.fit(self.X, self.y)
+            oob_error.append(1 - clf.oob_score_)
+        plt.plot(np.array(range(1, self.n_estimators + 1)), np.array(oob_error))
+        plt.xlabel("n_estimators")
+        plt.ylabel("OOB error rate")
+        plt.legend(loc="upper right")
+        plt.show()
+            
