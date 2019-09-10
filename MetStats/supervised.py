@@ -7,6 +7,7 @@ Created on Sun Sep  8 09:03:30 2019
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -15,6 +16,8 @@ from sklearn.model_selection import LeaveOneOut
 from sklearn import metrics
 from random import shuffle
 from tqdm import tqdm
+from MetStats.utils import confidence_ellipse
+colors = sns.color_palette("husl", 10)
 
 # from MetStats.io import load_csv
 # data = load_csv('Data/example_1.csv')
@@ -64,8 +67,10 @@ class PLSDA:
     
     def scores_plot(self):
         X_r = self.plsda.x_scores_
+        fig, ax = plt.subplots(figsize=(6, 6))
         for i, target_name in enumerate(self.target_names):
-            plt.scatter(X_r[self.y==i, 0], X_r[self.y==i, 1], alpha=.8, lw=2, label=target_name)
+            ax.scatter(X_r[self.y==i, 0], X_r[self.y==i, 1], alpha=.8, lw=2, label=target_name, color=colors[i])
+            confidence_ellipse(X_r[self.y==i, 0], X_r[self.y==i, 1], ax, edgecolor=colors[i], linestyle=':')
         plt.xlabel('PC 1')
         plt.ylabel('PC 2')
         plt.legend(loc='best', shadow=False, scatterpoints=1)
@@ -198,4 +203,5 @@ class SVM:
         confusion.columns = self.target_names
         acc = metrics.accuracy_score(self.y, pred)
         return {'accuracy': acc, 'confusion': confusion}
-        
+    
+    
