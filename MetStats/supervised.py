@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.cross_decomposition import PLSRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn import svm
 from sklearn.model_selection import LeaveOneOut
 from sklearn import metrics
 from random import shuffle
@@ -26,22 +27,22 @@ class PLSDA:
         self.target_names = data.target_names
         self.ncomp = ncomp
         self.dummy = np.array(pd.get_dummies(data.target))
-        plsda = PLSRegression(n_components=ncomp)
-        self.res = plsda.fit(self.X, self.dummy)
+        self.plsda = PLSRegression(n_components=ncomp)
+        self.plsda.fit(self.X, self.dummy)
         
     def get_scores(self):
-        return self.res.x_scores_
+        return self.plsda.x_scores_
     
     def get_loadings(self):
-        loadings = pd.DataFrame(self.res.x_loadings_)
+        loadings = pd.DataFrame(self.plsda.x_loadings_)
         loadings.index = self.feature_names
         return loadings
     
     def get_vips(self):
         # from https://github.com/scikit-learn/scikit-learn/issues/7050
-        t = self.res.x_scores_
-        w = self.res.x_weights_
-        q = self.res.y_loadings_
+        t = self.plsda.x_scores_
+        w = self.plsda.x_weights_
+        q = self.plsda.y_loadings_
         p, h = w.shape
         vips = np.zeros((p,))
         s = np.diag(t.T @ t @ q.T @ q).reshape(h, -1)
@@ -53,16 +54,16 @@ class PLSDA:
     
     def vips_plot(self, topN=10):
         vips = self.get_vips()
-        order = np.argsort(-vips)[range(topN)]
-        x_axis = np.array(self.feature_names)[order]
-        y_axis = vips[order]
+        order = np.argsort(-np.array(vips['VIP']))[range(topN)]
+        x_axis = np.array(vips['feature'])[order]
+        y_axis = vips['VIP'][order]
         plt.plot(x_axis, y_axis)
         plt.xlabel('features')
         plt.ylabel('variable importance')
         plt.figure()
     
     def scores_plot(self):
-        X_r = self.res.x_scores_
+        X_r = self.plsda.x_scores_
         for i, target_name in enumerate(self.target_names):
             plt.scatter(X_r[self.y==i, 0], X_r[self.y==i, 1], alpha=.8, lw=2, label=target_name)
         plt.xlabel('PC 1')
@@ -73,7 +74,7 @@ class PLSDA:
     def LOO_test(self):
         loo = LeaveOneOut()
         y_hat = np.zeros(self.dummy.shape)
-        for i, (train_index, test_index) in enumerate(loo.split(self.X)):
+        for i, (train_index, test_index) in enumerate(tqdm(loo.split(self.X))):
             X_train, X_test = self.X[train_index], self.X[test_index]
             y_train, y_test = self.dummy[train_index], self.dummy[test_index]
             plsda = PLSRegression(n_components=self.ncomp).fit(X_train, y_train)
@@ -121,13 +122,13 @@ class RandomForest:
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.clf = RandomForestClassifier(n_estimators=n_estimators, max_depth=max_depth)
-        self.res = self.clf.fit(self.X, self.y)
+        self.clf.fit(self.X, self.y)
             
     def get_OOB_error(self):
         oob_error = []
-        for i in range(1, self.n_estimators + 1):
+        for i in tqdm(range(1, self.n_estimators + 1)):
             clf = self.clf
-            clf.set_params(n_estimators=i)
+            clf.set_params(n_estimators=i, oob_score=True)
             clf.fit(self.X, self.y)
             oob_error.append(1 - clf.oob_score_)
         plt.plot(np.array(range(1, self.n_estimators + 1)), np.array(oob_error))
@@ -135,4 +136,66 @@ class RandomForest:
         plt.ylabel("OOB error rate")
         plt.legend(loc="upper right")
         plt.show()
-            
+        return pd.DataFrame({'estimators':list(range(1, self.n_estimators + 1)), 'oob_error': oob_error})
+    
+    def get_vips(self):
+        vips = self.clf.feature_importances_
+        return pd.DataFrame({'feature':self.feature_names, 'VIP': vips})
+    
+    def vips_plot(self, topN=10):
+        vips = self.get_vips()
+        order = np.argsort(-np.array(vips['VIP']))[range(topN)]
+        x_axis = np.array(vips['feature'])[order]
+        y_axis = vips['VIP'][order]
+        plt.plot(x_axis, y_axis)
+        plt.xlabel('features')
+        plt.ylabel('variable importance')
+        plt.figure()
+
+    def LOO_test(self):
+        loo = LeaveOneOut()
+        y_hat = []
+        for i, (train_index, test_index) in enumerate(tqdm(loo.split(self.X))):
+            X_train, X_test = self.X[train_index], self.X[test_index]
+            y_train, y_test = self.y[train_index], self.y[test_index]
+            clf = RandomForestClassifier(n_estimators=self.n_estimators, max_depth=self.max_depth).fit(X_train, y_train)
+            y_hat.append(clf.predict(X_test))
+        pred = y_hat
+        print('classification report: \n')
+        print(metrics.classification_report(self.y, pred))
+        confusion = pd.DataFrame(metrics.confusion_matrix(self.y, pred))
+        confusion.index = self.target_names
+        confusion.columns = self.target_names
+        acc = metrics.accuracy_score(self.y, pred)
+        return {'accuracy': acc, 'confusion': confusion}        
+   
+    
+class SVM:
+    def __init__(self, data, C=1.0, kernel='linear', degree=3):
+        self.X = data.data
+        self.y = data.target
+        self.feature_names = data.feature_names
+        self.target_names = data.target_names
+        self.C = C
+        self.kernel = kernel
+        self.degree = degree
+        self.clf = svm.SVC(C=C, kernel=kernel, degree=degree, gamma='scale')
+        self.clf.fit(self.X, self.y)        
+    
+    def LOO_test(self):
+        loo = LeaveOneOut()
+        y_hat = []
+        for i, (train_index, test_index) in enumerate(tqdm(loo.split(self.X))):
+            X_train, X_test = self.X[train_index], self.X[test_index]
+            y_train, y_test = self.y[train_index], self.y[test_index]
+            clf = svm.SVC(C=self.C, kernel=self.kernel, degree=self.degree, gamma='scale').fit(X_train, y_train)
+            y_hat.append(clf.predict(X_test))
+        pred = y_hat
+        print('classification report: \n')
+        print(metrics.classification_report(self.y, pred))
+        confusion = pd.DataFrame(metrics.confusion_matrix(self.y, pred))
+        confusion.index = self.target_names
+        confusion.columns = self.target_names
+        acc = metrics.accuracy_score(self.y, pred)
+        return {'accuracy': acc, 'confusion': confusion}
+        
