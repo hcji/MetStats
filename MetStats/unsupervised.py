@@ -13,7 +13,7 @@ from sklearn import decomposition
 from sklearn import manifold
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from MetStats.utils import confidence_ellipse
-colors = sns.color_palette("husl", 99)
+colors = sns.color_palette("husl", 10)
 
 # from MetStats.io import load_csv
 # data = load_csv('Data/example_1.csv')
