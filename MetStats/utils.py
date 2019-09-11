@@ -33,6 +33,7 @@ def confidence_ellipse(x, y, ax, n_std=2.0, facecolor='none', **kwargs):
     ellipse = Ellipse((0, 0),
         width=ell_radius_x * 2,
         height=ell_radius_y * 2,
+        lw = 2.0,
         facecolor=facecolor,
         **kwargs)
 
