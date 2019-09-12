@@ -7,6 +7,7 @@ Created on Sat Sep  7 15:16:05 2019
 
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn import datasets
 from sklearn import decomposition
