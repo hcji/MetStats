@@ -78,8 +78,10 @@ class TSNE:
     
     def scores_plot(self, pc1=0, pc2=1):
         X_r = self.tsne.fit_transform(self.X)
+        fig, ax = plt.subplots(figsize=(6, 6))
         for i, target_name in enumerate(self.target_names):
-            plt.scatter(X_r[self.y==i, pc1], X_r[self.y==i, pc2], alpha=.8, lw=2, label=target_name)
+            ax.scatter(X_r[self.y==i, pc1], X_r[self.y==i, pc2], alpha=.8, lw=2, label=target_name)
+            confidence_ellipse(X_r[self.y==i, 0], X_r[self.y==i, 1], ax, edgecolor=colors[i], linestyle=':') 
         plt.xlabel('PC ' + str(pc1))
         plt.ylabel('PC ' + str(pc2))
         plt.legend(loc='best', shadow=False, scatterpoints=1)

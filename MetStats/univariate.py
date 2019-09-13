@@ -68,11 +68,10 @@ class Univeriate:
         if nclass > 1:
             res = {}
             for i in range(nclass):
-                grp1 = X[y==i,:]
-                grp2 = X[y!=i,:]
+                lbs = np.array(y==i).astype(int)
                 aucs = []
                 for j in range(X.shape[1]):
-                    tpr, fdr, _ = roc_curve(grp1[:,j], grp2[:,j])
+                    tpr, fdr, _ = roc_curve(lbs, X[:,j])
                     aucs.append(auc(tpr, fdr))
                 resi = pd.DataFrame({'feature_names':self.feature_names, 'aucs':aucs})
                 res[self.target_names[i]] = resi
@@ -81,5 +80,26 @@ class Univeriate:
         return res
     
     def roc_plot(self, feature = 0):
-        # unfinished
+        X = self.X
+        y = self.y
+        target_names = self.data.target_names
+        if type(feature) is not int:
+            feature = self.feature_names.index(feature)
+        nclass = len(list(set(y)))
+        for i in range(nclass):
+            lbs = np.array(y==i).astype(int)
+            tpr, fdr, _ = roc_curve(lbs, X[:, feature])
+            auroc = round(auc(tpr, fdr), 3)
+            plt.plot(tpr, fdr, color=colors[i], label=str(target_names[i])+': '+str(auroc))
+        plt.plot([0, 1], [0, 1], color='red', lw=2, linestyle='--')
+        plt.xlim([0.0, 1.05])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.legend(loc='best')
+        plt.show()
+            
+            
+            
+            
     
