@@ -51,7 +51,7 @@ class Univeriate:
         X = self.X
         y = self.y
         if type(feature) is not int:
-            feature = self.feature_names[feature].index(feature)
+            feature = self.feature_names.index(feature)
         nclass = len(list(set(y)))
         values = {}
         for i in range(nclass):
